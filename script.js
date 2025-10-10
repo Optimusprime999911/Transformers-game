@@ -1,8 +1,6 @@
-/* Responsive game script:
-   - uses playArea.clientWidth / clientHeight to compute positions & speeds
-   - replaces hard-coded 700/820 numbers with dynamic values
-   - responds to window resize/orientation changes
-   - mobile controls and all previous features remain
+/* Responsive game script with fixes to prevent off-screen sprites
+   - updated updateSizes() clamps and repositioning safeguards
+   - keeps previous gameplay, mobile controls, boss, shop, etc.
 */
 
 /***** STORAGE KEYS & DEFAULTS *****/
@@ -26,7 +24,7 @@ const DEFAULTS = {
 
 /***** AUTOBOT SHOP ITEMS *****/
 const AUTOBOTS = [
-  { id: "jazz",  name: "Jazz",     img: "images/jazz.png",    cost: 0,    hpBonus: 0 },
+  { id: "jazz",  name: "Jazz",    img: "images/jazz.png",    cost: 0,   hpBonus: 0 },
   { id: "optimus", name: "Optimus", img: "images/optimus.png", cost: 300, hpBonus: 30 },
   { id: "ratchet", name: "Ratchet", img: "images/ratchet.png", cost: 150, hpBonus: 15 }
 ];
@@ -126,7 +124,7 @@ const PRICE_HP = 50;
 const PRICE_DAMAGE = 75;
 const PRICE_CAPACITY = 50;
 
-/***** INITIAL UI SETUP *****/
+/***** INIT UI *****/
 function updateShopUI(){
   creditsDisplay.innerText = credits;
   statHP.innerText = playerMaxHP;
@@ -237,35 +235,53 @@ function applySelectedAutobot(){
 }
 applySelectedAutobot();
 
-/***** DYNAMIC SIZE CALCULATION *****/
+/***** DYNAMIC SIZE CALCULATION (safer clamping + repositioning) *****/
 function updateSizes(){
   // current play area size (after CSS responsive rules)
   areaW = Math.max(200, Math.round(playArea.clientWidth));
   areaH = Math.max(200, Math.round(playArea.clientHeight));
 
-  // element sizes (read from DOM; CSS may change them per device)
-  playerW = playerEl.offsetWidth || 100;
-  playerH = playerEl.offsetHeight || 100;
+  // DOM-driven element sizes (if already created) or fallbacks that scale with area
+  playerW = playerEl.offsetWidth || Math.round(Math.min(110, areaW * 0.14));
+  playerH = playerEl.offsetHeight || playerW;
 
-  // pick representative enemy/boss/missile sizes from CSS rules or element defaults
-  // if there are existing elements use their sizes, otherwise fall back to CSS defaults:
-  const tmpEnemy = document.querySelector(".enemy");
-  if (tmpEnemy) { enemyW = tmpEnemy.offsetWidth; enemyH = tmpEnemy.offsetHeight; }
-  else { enemyW = Math.round(Math.min(120, areaW * 0.12)); enemyH = Math.round(enemyW); }
+  // determine enemy/boss/missile sizes from CSS (create temporary if none)
+  const sampleEnemy = document.querySelector(".enemy");
+  if (sampleEnemy) {
+    enemyW = sampleEnemy.offsetWidth; enemyH = sampleEnemy.offsetHeight;
+  } else {
+    enemyW = Math.round(Math.min(120, areaW * 0.12)); enemyH = enemyW;
+  }
 
-  const tmpBoss = document.querySelector(".boss");
-  if (tmpBoss) { bossW = tmpBoss.offsetWidth; bossH = tmpBoss.offsetHeight; }
-  else { bossW = Math.round(Math.min(240, areaW * 0.24)); bossH = Math.round(bossW); }
+  const sampleBoss = document.querySelector(".boss");
+  if (sampleBoss) {
+    bossW = sampleBoss.offsetWidth; bossH = sampleBoss.offsetHeight;
+  } else {
+    bossW = Math.round(Math.min(240, areaW * 0.24)); bossH = bossW;
+  }
 
-  const tmpMissile = document.querySelector(".missile");
-  if (tmpMissile) { missileW = tmpMissile.offsetWidth; missileH = tmpMissile.offsetHeight; }
-  else { missileW = Math.round(Math.min(44, areaW * 0.04)); missileH = Math.round(missileW * 1.6); }
+  const sampleMissile = document.querySelector(".missile");
+  if (sampleMissile) {
+    missileW = sampleMissile.offsetWidth; missileH = sampleMissile.offsetHeight;
+  } else {
+    missileW = Math.round(Math.min(44, areaW * 0.04)); missileH = Math.round(missileW * 1.6);
+  }
 
   // movement / speed values scale with areaH/areaW
   playerStep = Math.max(6, Math.round(areaW * 0.035)); // keyboard step
   missileSpeed = Math.max(8, Math.round(areaH * 0.02));
   bossMissileSpeed = Math.max(6, Math.round(areaH * 0.012));
-  enemySpeed = Math.max(2, Math.round(areaH * 0.006)); // base; grows with score in game logic
+  // base enemy speed; will be increased by difficulty logic
+  enemySpeed = Math.max(2, Math.round(areaH * 0.006));
+
+  // Clamp playerX so player won't be offscreen after resize
+  if (typeof playerX === "number") {
+    playerX = Math.max(0, Math.min(playerX, areaW - playerW));
+    playerEl.style.left = playerX + "px";
+  } else {
+    playerX = Math.round((areaW - playerW) / 2);
+    playerEl.style.left = playerX + "px";
+  }
 }
 
 /***** NAVIGATION: PLAY BUTTON *****/
@@ -277,7 +293,6 @@ playBtn.addEventListener("click", () => {
 
 /***** START / STOP GAME *****/
 function startGame(){
-  // ensure sizes are fresh
   updateSizes();
 
   playerHP = playerMaxHP + (AUTOBOTS.find(b=>b.id===selectedAutobot)?.hpBonus || 0);
@@ -296,14 +311,12 @@ function startGame(){
   paused = false;
   updateHUD();
 
-  // cleanup play area
+  // cleanup
   playArea.querySelectorAll(".enemy, .missile, .explosion, .boss, .boss-missile").forEach(n=>n.remove());
 
-  // spawn loop & ammo regen
   spawnIntervalId = setInterval(spawnEnemy, spawnInterval);
   ammoRegenTimer = setInterval(()=>{ if(!gameRunning||paused) return; if(ammo<missileCapacity){ ammo++; updateHUD(); } }, 700);
 
-  // update sizes on resize while in game
   window.addEventListener("resize", updateSizes);
 
   requestAnimationFrame(gameLoop);
@@ -383,7 +396,7 @@ function updateHUD(){
 }
 
 /***** INPUTS (keyboard and mobile) *****/
-// Keyboard
+// Keyboard input
 document.addEventListener("keydown", (ev) => {
   if (!gameRunning || paused) return;
   if (ev.code === "ArrowLeft") {
@@ -409,44 +422,32 @@ function setupMobileControls(){
     b.addEventListener('touchstart', e => e.preventDefault(), { passive:false });
   });
 
-  // Left
-  btnLeft.addEventListener("touchstart", startMoveLeft, { passive:false });
-  btnLeft.addEventListener("touchend", stopMoveLeft);
-  btnLeft.addEventListener("mousedown", startMoveLeft);
-  btnLeft.addEventListener("mouseup", stopMoveLeft);
-  btnLeft.addEventListener("mouseleave", stopMoveLeft);
-  btnLeft.addEventListener("click", ev => ev.preventDefault());
+  btnLeft.addEventListener("touchstart", () => { movingLeft = true; movingRight = false; }, { passive:false });
+  btnLeft.addEventListener("touchend", () => { movingLeft = false; });
+  btnLeft.addEventListener("mousedown", () => { movingLeft = true; movingRight = false; });
+  btnLeft.addEventListener("mouseup", () => { movingLeft = false; });
+  btnLeft.addEventListener("mouseleave", () => { movingLeft = false; });
 
-  // Right
-  btnRight.addEventListener("touchstart", startMoveRight, { passive:false });
-  btnRight.addEventListener("touchend", stopMoveRight);
-  btnRight.addEventListener("mousedown", startMoveRight);
-  btnRight.addEventListener("mouseup", stopMoveRight);
-  btnRight.addEventListener("mouseleave", stopMoveRight);
-  btnRight.addEventListener("click", ev => ev.preventDefault());
+  btnRight.addEventListener("touchstart", () => { movingRight = true; movingLeft = false; }, { passive:false });
+  btnRight.addEventListener("touchend", () => { movingRight = false; });
+  btnRight.addEventListener("mousedown", () => { movingRight = true; movingLeft = false; });
+  btnRight.addEventListener("mouseup", () => { movingRight = false; });
+  btnRight.addEventListener("mouseleave", () => { movingRight = false; });
 
-  // Shoot
-  btnShoot.addEventListener("touchstart", ev => { ev.preventDefault(); doShoot(); }, { passive:false });
-  btnShoot.addEventListener("mousedown", ev => { ev.preventDefault(); doShoot(); });
-  btnShoot.addEventListener("click", ev => { ev.preventDefault(); doShoot(); });
+  btnShoot.addEventListener("touchstart", (ev) => { ev.preventDefault(); doShoot(); }, { passive:false });
+  btnShoot.addEventListener("mousedown", (ev) => { ev.preventDefault(); doShoot(); });
+  btnShoot.addEventListener("click", (ev) => { ev.preventDefault(); doShoot(); });
 }
-
-function startMoveLeft(e){ movingLeft = true; movingRight = false; }
-function stopMoveLeft(e){ movingLeft = false; }
-function startMoveRight(e){ movingRight = true; movingLeft = false; }
-function stopMoveRight(e){ movingRight = false; }
 function doShoot(){ if (!gameRunning || paused) return; if (ammo > 0){ firePlayerMissile(); ammo--; updateHUD(); } }
 
 setupMobileControls();
 
-/***** SPAWN ENEMY (uses areaW/areaH) *****/
+/***** SPAWN ENEMY *****/
 function spawnEnemy(){
   if (!gameRunning || paused || bossActive) return;
+  updateSizes();
   const e = document.createElement("div");
   e.classList.add("enemy");
-
-  // place randomly within horizontal bounds
-  updateSizes(); // ensure current sizes
   const left = Math.round(Math.random() * Math.max(0, areaW - enemyW));
   e.style.left = left + "px";
   e.style.top = (-enemyH - 10) + "px";
@@ -456,33 +457,32 @@ function spawnEnemy(){
   enemies.push(e);
 }
 
-/***** PLAYER MISSILE (uses dynamic sizes) *****/
+/***** PLAYER MISSILE *****/
 function firePlayerMissile(){
   if (!gameRunning) return;
   updateSizes();
   const m = document.createElement("div");
   m.classList.add("missile");
-  const x = Math.round(playerX + playerW/2 - missileW/2);
-  const topStart = Math.round(areaH - playerH - (playerEl.style.bottom ? parseInt(playerEl.style.bottom) : 20));
+  const x = Math.round(playerX + (playerW/2) - (missileW/2));
   m.style.left = x + "px";
   m.style.top = (areaH - playerH - missileH - 10) + "px";
   playArea.appendChild(m);
   missiles.push(m);
 }
 
-/***** BOSS spawn & movement (uses areaW & bossW) *****/
+/***** BOSS spawn & movement *****/
 function spawnBoss(){
   updateSizes();
   bossActive = true;
   bossHP = 150;
   boss = document.createElement("div");
   boss.classList.add("boss");
+  playArea.appendChild(boss);
   bossW = boss.offsetWidth || bossW;
   bossH = boss.offsetHeight || bossH;
   const initialLeft = Math.round((areaW - bossW)/2);
   boss.style.left = initialLeft + "px";
   boss.style.top = "10px";
-  playArea.appendChild(boss);
 
   let bx = initialLeft;
   let targetX = bx;
@@ -530,12 +530,12 @@ function spawnBossMissile(){
   enemies.push(bm);
 }
 
-/***** GAME LOOP: movement, collision, explosion (all dynamic) *****/
+/***** GAME LOOP: movement, collision, explosion *****/
 function gameLoop(){
   if (!gameRunning) return;
   if (paused) { requestAnimationFrame(gameLoop); return; }
 
-  // mobile continuous movement
+  // mobile continuous move
   if (movingLeft) {
     playerX = Math.max(0, playerX - Math.max(2, Math.round(areaW * 0.02)));
     playerEl.style.left = playerX + "px";
@@ -549,7 +549,7 @@ function gameLoop(){
     const el = enemies[i];
     if (!el) { enemies.splice(i,1); continue; }
 
-    // boss missile (moves down)
+    // boss missile
     if (el.dataset && el.dataset.bossMissile === "1") {
       const top = parseFloat(el.style.top || 0);
       el.style.top = (top + bossMissileSpeed) + "px";
@@ -566,7 +566,7 @@ function gameLoop(){
       continue;
     }
 
-    // normal enemy (falls down)
+    // normal enemy (falls)
     if (el.classList && el.classList.contains("enemy")) {
       const top = parseFloat(el.style.top || -enemyH);
       el.style.top = (top + enemySpeed) + "px";
@@ -602,7 +602,7 @@ function gameLoop(){
     }
   }
 
-  // move player missiles & detect collisions (check boss first)
+  // move player missiles & detect collisions
   for (let mi = missiles.length -1; mi >= 0; mi--){
     const m = missiles[mi];
     const top = parseFloat(m.style.top || 0);
@@ -610,7 +610,7 @@ function gameLoop(){
 
     if (parseFloat(m.style.top) < -50) { m.remove(); missiles.splice(mi,1); continue; }
 
-    // boss collision first
+    // boss collision
     if (bossActive && boss) {
       const bx = parseFloat(boss.style.left) || 0, by = parseFloat(boss.style.top) || 0;
       if (rectsOverlap(parseFloat(m.style.left), parseFloat(m.style.top), missileW, missileH, bx, by, bossW, bossH)) {
@@ -637,7 +637,7 @@ function gameLoop(){
       }
     }
 
-    // otherwise check collision with normal enemies
+    // normal enemy collision
     for (let ei = enemies.length -1; ei >= 0; ei--) {
       const en = enemies[ei];
       if (!en || !en.classList) continue;
@@ -707,7 +707,7 @@ function togglePause(){
     spawnIntervalId = setInterval(spawnEnemy, spawnInterval);
     if (bossActive && boss) {
       bossShootInterval = setInterval(()=>{ if(!gameRunning||paused||!boss) return; spawnBossMissile(); }, 900);
-      bossMoveInterval = setInterval(()=>{ /* existence only */ }, 1000);
+      bossMoveInterval = setInterval(()=>{ /* kept to indicate movement timer exists */ }, 1000);
     }
     ammoRegenTimer = setInterval(()=>{ if(!gameRunning||paused) return; if(ammo<missileCapacity){ ammo++; updateHUD(); } }, 700);
     const overlay = document.getElementById("pauseOverlay");

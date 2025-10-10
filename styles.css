@@ -6,6 +6,9 @@
   --glass: rgba(255,255,255,0.03);
 }
 
+/* Prevent accidental horizontal scroll on small screens */
+html,body{overflow-x:hidden}
+
 /* basic */
 *{box-sizing:border-box}
 body{
@@ -16,24 +19,26 @@ body{
   display:flex;
   justify-content:center;
   align-items:flex-start;
-  padding:24px;
+  padding:12px;
   min-height:100vh;
 }
 
-/* HOME */
+/* HOME - responsive container */
 #home{
-  width:920px;
+  width:100%;
+  max-width:920px;
   background:linear-gradient(180deg,#121212,#0f0f0f);
   border:3px solid rgba(255,0,0,0.25);
   padding:18px;
   border-radius:8px;
   text-align:center;
+  margin:0 auto;
 }
 #home h1{margin:0 0 12px 0}
-.hud-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-#upgrades{display:flex;gap:12px;justify-content:space-between;margin:12px 0}
+.hud-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+#upgrades{display:flex;gap:12px;justify-content:space-between;margin:12px 0;flex-wrap:wrap}
 .upgrade{
-  flex:1;
+  flex:1 1 220px;
   background:var(--glass);
   padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);
 }
@@ -46,29 +51,44 @@ body{
   justify-content:flex-start;
   align-items:flex-start;
   margin:12px 0;
+  flex-wrap:wrap;         /* allow wrapping so cards don't overflow */
 }
 .autobotCard{
-  width:160px;
+  flex: 0 1 140px;        /* responsive card width */
+  width:auto;
   background:rgba(255,255,255,0.02);
   border-radius:8px;
   padding:8px;
   border:1px solid rgba(255,255,255,0.03);
   text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
 }
-.autobotCard img{width:110px;height:110px;object-fit:contain;margin-bottom:6px}
+.autobotCard img{
+  width:100%;             /* scale to card width */
+  max-width:110px;       /* keep reasonable on desktop */
+  height:auto;
+  object-fit:contain;
+  margin-bottom:6px;
+}
 .autobotCard button{padding:6px 10px;background:#18a0ff;border:0;border-radius:6px;color:white;cursor:pointer}
 .autobotOwned{background:linear-gradient(90deg, rgba(0,200,80,0.15), rgba(255,255,255,0.02));}
 
-/* GAME SCREEN */
+/* GAME SCREEN - responsive container */
 .hidden{display:none}
-#gameScreen{width:920px;margin-top:12px}
+#gameScreen{
+  width:100%;
+  max-width:920px;
+  margin:12px auto 0 auto;
+}
 #game{
   background:linear-gradient(180deg,#0b0b0b,#111);
   border:3px solid var(--accent);
   padding:8px;
   border-radius:8px;
 }
-#statsTop{display:flex;gap:12px;align-items:center;margin-bottom:6px;justify-content:space-between}
+#statsTop{display:flex;gap:12px;align-items:center;margin-bottom:6px;justify-content:space-between;flex-wrap:wrap}
 #statsTop > div{background:rgba(255,255,255,0.02);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.02)}
 #statsTop button {
   padding:6px 10px;
@@ -81,10 +101,11 @@ body{
 }
 #statsTop button:active { transform: translateY(1px); }
 
+/* Play area uses min() to never overflow the viewport */
 #playArea{
   position:relative;
-  width:700px;
-  height:820px;
+  width: min(700px, 92vw);
+  height: min(820px, 92vh);
   margin:0 auto;
   background:linear-gradient(180deg,#111,#060606);
   overflow:hidden;
@@ -110,13 +131,15 @@ body{
   100%{transform:translateY(0)}
 }
 
-/* player */
+/* player - keep size responsive but bounded */
 #player{
   position:absolute;
   bottom:20px;
-  left:310px;
-  width:100px;
-  height:100px;
+  left:calc(50% - 50px);
+  width:min(100px, 16vw);
+  max-width:110px;
+  height:auto;
+  aspect-ratio:1/1;
   background-image:url("images/jazz.png");
   background-size:contain;
   background-position:center;
@@ -128,8 +151,9 @@ body{
 /* enemies */
 .enemy{
   position:absolute;
-  width:80px;
-  height:80px;
+  width:min(80px,12vw);
+  height:auto;
+  aspect-ratio:1/1;
   background-size:contain;
   background-position:center;
   background-repeat:no-repeat;
@@ -146,8 +170,9 @@ body{
 /* boss */
 .boss{
   position:absolute;
-  width:170px;
-  height:170px;
+  width:min(170px,24vw);
+  height:auto;
+  aspect-ratio:1/1;
   background-image:url("images/frenzy.png");
   background-size:contain;
   background-position:center;
@@ -161,8 +186,9 @@ body{
 /* missiles */
 .missile{
   position:absolute;
-  width:28px;
-  height:48px;
+  width:min(28px,4vw);
+  height:auto;
+  aspect-ratio:1/1.8;
   background-image:url("images/weapon-missile.png");
   background-size:contain;
   background-position:center;
@@ -176,8 +202,9 @@ body{
 /* boss missiles */
 .boss-missile{
   position:absolute;
-  width:28px;
-  height:48px;
+  width:min(28px,4vw);
+  height:auto;
+  aspect-ratio:1/1.8;
   background-image:url("images/weapon-missile.png");
   transform:rotate(180deg);
   background-size:contain;
@@ -187,8 +214,8 @@ body{
 /* explosion */
 .explosion{
   position:absolute;
-  width:110px;
-  height:110px;
+  width:min(110px,18vw);
+  height:min(110px,18vw);
   border-radius:50%;
   pointer-events:none;
   z-index:30;
@@ -244,7 +271,6 @@ body{
   pointer-events:auto;
   align-items:center;
   justify-content:center;
-  /* hidden by default on desktop */
   display:none;
 }
 .ctrl-btn{
@@ -266,15 +292,11 @@ body{
 
 /* show controls on small screens */
 @media (max-width:900px), (max-device-width:900px) {
-  #playArea{ width:92vw; height:100vh; max-height:92vh }
-  #gameScreen{ width:100% }
-  #home{ width:100%; box-sizing:border-box }
   #mobile-controls{ display:flex; }
-  /* adjust player and elements scale on small screens */
-  #player{ width:84px; height:84px; bottom:16px; }
-  .enemy{ width:70px; height:70px; }
-  .boss{ width:150px; height:150px; }
-  .missile, .boss-missile{ width:22px; height:38px; }
+  #player{ width:min(84px,14vw); bottom:16px; }
+  .enemy{ width:min(70px,12vw); }
+  .boss{ width:min(150px,28vw); }
+  .missile, .boss-missile{ width:min(22px,4vw); }
   #statsTop{ flex-wrap:wrap; gap:8px }
   #statsTop > div { padding:6px 8px; font-size:14px; }
   #statsTop button { padding:8px 10px; font-size:16px; }
