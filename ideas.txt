@@ -1,0 +1,5 @@
+add character
+add shooting abilites
+add boost ability
+make more realistick
+Randomly moving boss | More hp when buying | Fixing the character images | Animation of the game | Buying new autobots | Path Button 

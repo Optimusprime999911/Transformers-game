@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Transformers — Jazz vs Frenzy</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- HOME / UPGRADE SCREEN -->
+  <section id="home">
+    <h1>Transformers — Jazz vs Frenzy</h1>
+    <div class="hud-row">
+      <div>Credits: <span id="creditsDisplay">0</span></div>
+      <button id="resetUpgrades">Reset Upgrades</button>
+    </div>
+
+    <div id="upgrades">
+      <div class="upgrade">
+        <h3>Autobot Health</h3>
+        <p>Increase Jazz's max HP by +20</p>
+        <div>Current: <span id="statHP">100</span></div>
+        <div>Cost: <span id="costHP">50</span> credits</div>
+        <button id="buyHP">Buy</button>
+      </div>
+
+      <div class="upgrade">
+        <h3>Missile Damage</h3>
+        <p>Increase missile damage +5</p>
+        <div>Current: <span id="statDamage">5</span></div>
+        <div>Cost: <span id="costDamage">75</span> credits</div>
+        <button id="buyDamage">Buy</button>
+      </div>
+
+      <div class="upgrade">
+        <h3>Missile Capacity</h3>
+        <p>Increase missile capacity by +5</p>
+        <div>Current: <span id="statCapacity">10</span></div>
+        <div>Cost: <span id="costCapacity">50</span> credits</div>
+        <button id="buyCapacity">Buy</button>
+      </div>
+    </div>
+
+    <h2>Autobots Shop</h2>
+    <div id="autobotsRow">
+      <!-- autopopulated by JS -->
+    </div>
+
+    <div class="home-controls">
+      <button id="playBtn">Play Game</button>
+    </div>
+
+    <small>Controls: ← → to move, Space to shoot. Missiles limited; they auto-regenerate slowly.</small>
+  </section>
+
+  <!-- GAME SCREEN -->
+  <section id="gameScreen" class="hidden">
+    <div id="game">
+      <div id="statsTop">
+        <div id="score">Score: 0</div>
+        <div id="playerHP">HP: 100</div>
+        <div id="ammo">Ammo: 10</div>
+        <div id="creditsMini">Credits: 0</div>
+        <div id="bossHP" class="hidden">Boss HP: 150</div>
+        <div>
+          <button id="pauseBtn">Pause</button>
+          <button id="homeBtn">Home</button>
+        </div>
+      </div>
+
+      <div id="playArea">
+        <div id="bg-anim"></div>        <!-- animated background layer -->
+        <div id="player"></div>
+
+        <!-- MOBILE CONTROLS: shown on small screens -->
+        <div id="mobile-controls" aria-hidden="false">
+          <button class="ctrl-btn" id="btn-left" aria-label="Move left">◀</button>
+          <button class="ctrl-btn" id="btn-shoot" aria-label="Shoot">●</button>
+          <button class="ctrl-btn" id="btn-right" aria-label="Move right">▶</button>
+        </div>
+
+        <!-- enemies, missiles, explosions appended dynamically -->
+      </div>
+
+      <div id="messages">
+        <div id="gameOver" class="hidden">GAME OVER<br>Press R to return to Home</div>
+        <div id="levelWin" class="hidden">YOU WIN!<br>Press R to return to Home</div>
+      </div>
+    </div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
