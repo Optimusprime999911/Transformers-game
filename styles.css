@@ -6,8 +6,8 @@
   --glass: rgba(255,255,255,0.03);
 }
 
-/* Prevent accidental horizontal scroll on small screens */
-html,body{overflow-x:hidden}
+/* Prevent horizontal scrolling */
+html,body{overflow-x:hidden;height:100%}
 
 /* basic */
 *{box-sizing:border-box}
@@ -51,10 +51,10 @@ body{
   justify-content:flex-start;
   align-items:flex-start;
   margin:12px 0;
-  flex-wrap:wrap;         /* allow wrapping so cards don't overflow */
+  flex-wrap:wrap;
 }
 .autobotCard{
-  flex: 0 1 140px;        /* responsive card width */
+  flex: 0 1 140px;
   width:auto;
   background:rgba(255,255,255,0.02);
   border-radius:8px;
@@ -66,8 +66,8 @@ body{
   align-items:center;
 }
 .autobotCard img{
-  width:100%;             /* scale to card width */
-  max-width:110px;       /* keep reasonable on desktop */
+  width:100%;
+  max-width:110px;
   height:auto;
   object-fit:contain;
   margin-bottom:6px;
@@ -88,8 +88,24 @@ body{
   padding:8px;
   border-radius:8px;
 }
-#statsTop{display:flex;gap:12px;align-items:center;margin-bottom:6px;justify-content:space-between;flex-wrap:wrap}
-#statsTop > div{background:rgba(255,255,255,0.02);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.02)}
+
+/* top stats - compact on small screens */
+#statsTop{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:6px;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+#statsTop > div{
+  background:rgba(255,255,255,0.02);
+  padding:6px 10px;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,0.02);
+  font-size:14px;
+}
+#statsTop .stat-controls { display:flex; gap:6px; align-items:center; }
 #statsTop button {
   padding:6px 10px;
   border-radius:6px;
@@ -101,11 +117,16 @@ body{
 }
 #statsTop button:active { transform: translateY(1px); }
 
-/* Play area uses min() to never overflow the viewport */
+/* Play area sizing:
+   - Use viewport to ensure it fits on mobile
+   - Calculate height so stats + top margins never push it offscreen
+*/
 #playArea{
   position:relative;
   width: min(700px, 92vw);
-  height: min(820px, 92vh);
+  /* height set to fit viewport minus a safe top offset (stats + margins),
+     clamped between 420px and 92vh so it's tall on desktop but not oversized on mobile */
+  height: clamp(420px, calc(100vh - 140px), 92vh);
   margin:0 auto;
   background:linear-gradient(180deg,#111,#060606);
   overflow:hidden;
@@ -131,10 +152,10 @@ body{
   100%{transform:translateY(0)}
 }
 
-/* player - keep size responsive but bounded */
+/* player - responsive and clamped so it won't overflow */
 #player{
   position:absolute;
-  bottom:20px;
+  bottom:18px;
   left:calc(50% - 50px);
   width:min(100px, 16vw);
   max-width:110px;
@@ -239,7 +260,7 @@ body{
   transform:translate(-50%,-50%);
   background:rgba(0,0,0,0.75);
   padding:16px 20px;border-radius:8px;border:2px solid rgba(255,0,0,0.3);
-  font-size:28px;
+  font-size:22px;
   text-align:center;
   z-index:40;
 }
@@ -290,16 +311,19 @@ body{
 }
 .ctrl-btn:active{ transform: translateY(2px) scale(0.98); }
 
-/* show controls on small screens */
+/* show controls on small screens and shrink HUD fonts */
 @media (max-width:900px), (max-device-width:900px) {
   #mobile-controls{ display:flex; }
-  #player{ width:min(84px,14vw); bottom:16px; }
+  #player{ width:min(84px,14vw); bottom:12px; }
   .enemy{ width:min(70px,12vw); }
   .boss{ width:min(150px,28vw); }
   .missile, .boss-missile{ width:min(22px,4vw); }
-  #statsTop{ flex-wrap:wrap; gap:8px }
-  #statsTop > div { padding:6px 8px; font-size:14px; }
-  #statsTop button { padding:8px 10px; font-size:16px; }
+  #statsTop{ gap:8px; }
+  #statsTop > div { padding:6px 8px; font-size:13px; }
+  #statsTop button { padding:8px 10px; font-size:14px; }
+  #game { padding:6px; border-width:2px; }
+  /* ensure playArea doesn't exceed the viewport width (avoid crossing red border) */
+  #playArea{ width: calc(100vw - 24px); max-width: calc(100vw - 24px); }
 }
 
 /* small */
