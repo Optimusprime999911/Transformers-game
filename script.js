@@ -1,6 +1,4 @@
-/* Responsive game script - updated to use computed playArea size and clamp positions
-   (complete game script: shop, upgrades, mobile controls, boss, pause, home)
-*/
+/* Full game script (responsive, uses playArea sizes). Gameplay logic unchanged. */
 
 /***** STORAGE KEYS & DEFAULTS *****/
 const STORAGE = {
@@ -23,7 +21,7 @@ const DEFAULTS = {
 
 /***** AUTOBOT SHOP ITEMS *****/
 const AUTOBOTS = [
-  { id: "jazz",  name: "Jazz",    img: "images/jazz.png",    cost: 0,   hpBonus: 0 },
+  { id: "jazz",  name: "Jazz",     img: "images/jazz.png",    cost: 0,    hpBonus: 0 },
   { id: "optimus", name: "Optimus", img: "images/optimus.png", cost: 300, hpBonus: 30 },
   { id: "ratchet", name: "Ratchet", img: "images/ratchet.png", cost: 150, hpBonus: 15 }
 ];
@@ -89,22 +87,22 @@ const btnShoot = document.getElementById("btn-shoot");
 /***** RUNTIME STATE *****/
 let playerHP, playerX;
 let score = 0;
-let enemies = [];
-let missiles = [];
+let enemies = [];     // enemies + boss missiles
+let missiles = [];    // player missiles
 let boss = null;
 let bossHP = 150;
 let bossActive = false;
 let bossShootInterval = null;
 let bossMoveInterval = null;
 let spawnIntervalId = null;
-let enemySpeed = 0;
+let enemySpeed = 4;
 let spawnInterval = 1000;
 let ammo = 0;
 let ammoRegenTimer = null;
 let gameRunning = false;
 let paused = false;
 
-/***** DYNAMIC SIZE VARS *****/
+/***** SIZE VARIABLES (dynamic) *****/
 let areaW = 700, areaH = 820;
 let playerW = 100, playerH = 100;
 let enemyW = 80, enemyH = 80;
@@ -114,7 +112,7 @@ let playerStep = 30;
 let missileSpeed = 14;
 let bossMissileSpeed = 9;
 
-/***** MOBILE FLAGS *****/
+/***** MOBILE CONTROL FLAGS *****/
 let movingLeft = false;
 let movingRight = false;
 
@@ -123,7 +121,7 @@ const PRICE_HP = 50;
 const PRICE_DAMAGE = 75;
 const PRICE_CAPACITY = 50;
 
-/***** UI init *****/
+/***** INIT UI *****/
 function updateShopUI(){
   creditsDisplay.innerText = credits;
   statHP.innerText = playerMaxHP;
@@ -136,7 +134,7 @@ function updateShopUI(){
 }
 updateShopUI();
 
-/***** SHOP UI *****/
+/***** AUTOBOT SHOP RENDER & ACTIONS *****/
 function renderAutobotCards(){
   autobotsRow.innerHTML = "";
   AUTOBOTS.forEach(bot => {
@@ -180,7 +178,7 @@ function renderAutobotCards(){
   });
 }
 
-/***** SHOP UPGRADES *****/
+/***** SHOP UPGRADE BUTTONS *****/
 buyHP.addEventListener("click", () => {
   if (credits >= PRICE_HP) {
     credits -= PRICE_HP;
@@ -225,7 +223,7 @@ resetBtn.addEventListener("click", () => {
   updateShopUI();
 });
 
-/***** apply selected autobot sprite *****/
+/***** APPLY SELECTED AUTOBOT (update player sprite & HP bonus) *****/
 function applySelectedAutobot(){
   const bot = AUTOBOTS.find(b => b.id === selectedAutobot) || AUTOBOTS[0];
   playerEl.style.backgroundImage = `url("${bot.img}")`;
@@ -233,38 +231,32 @@ function applySelectedAutobot(){
 }
 applySelectedAutobot();
 
-/***** DYNAMIC SIZE / CLAMPING *****/
+/***** DYNAMIC SIZE CALCULATION *****/
 function updateSizes(){
-  // read final computed playArea size (after CSS)
-  // important: use getBoundingClientRect for fractional pixel positions
   const rect = playArea.getBoundingClientRect();
   areaW = Math.max(200, Math.round(rect.width));
   areaH = Math.max(200, Math.round(rect.height));
 
-  // player size from DOM (responsive CSS controls size)
   playerW = playerEl.offsetWidth || Math.round(Math.min(110, areaW * 0.14));
   playerH = playerEl.offsetHeight || playerW;
 
-  // enemy/boss/missile sizes from existing DOM or reasonable fallbacks
-  const sEnemy = document.querySelector(".enemy");
-  if (sEnemy) { enemyW = sEnemy.offsetWidth; enemyH = sEnemy.offsetHeight; }
+  const tmpEnemy = document.querySelector(".enemy");
+  if (tmpEnemy) { enemyW = tmpEnemy.offsetWidth; enemyH = tmpEnemy.offsetHeight; }
   else { enemyW = Math.round(Math.min(120, areaW * 0.12)); enemyH = enemyW; }
 
-  const sBoss = document.querySelector(".boss");
-  if (sBoss) { bossW = sBoss.offsetWidth; bossH = sBoss.offsetHeight; }
+  const tmpBoss = document.querySelector(".boss");
+  if (tmpBoss) { bossW = tmpBoss.offsetWidth; bossH = tmpBoss.offsetHeight; }
   else { bossW = Math.round(Math.min(240, areaW * 0.24)); bossH = bossW; }
 
-  const sMiss = document.querySelector(".missile");
-  if (sMiss) { missileW = sMiss.offsetWidth; missileH = sMiss.offsetHeight; }
+  const tmpMissile = document.querySelector(".missile");
+  if (tmpMissile) { missileW = tmpMissile.offsetWidth; missileH = tmpMissile.offsetHeight; }
   else { missileW = Math.round(Math.min(44, areaW * 0.04)); missileH = Math.round(missileW * 1.6); }
 
-  // movement scales
   playerStep = Math.max(6, Math.round(areaW * 0.035));
   missileSpeed = Math.max(8, Math.round(areaH * 0.02));
   bossMissileSpeed = Math.max(6, Math.round(areaH * 0.012));
   enemySpeed = Math.max(2, Math.round(areaH * 0.006));
 
-  // clamp playerX so player won't be off-screen after resize/rotation
   if (typeof playerX === "number") {
     playerX = Math.max(0, Math.min(playerX, areaW - playerW));
     playerEl.style.left = playerX + "px";
@@ -274,7 +266,7 @@ function updateSizes(){
   }
 }
 
-/***** NAVIGATION: PLAY *****/
+/***** NAVIGATION: PLAY BUTTON *****/
 playBtn.addEventListener("click", () => {
   home.classList.add("hidden");
   gameScreen.classList.remove("hidden");
@@ -283,7 +275,6 @@ playBtn.addEventListener("click", () => {
 
 /***** START / STOP GAME *****/
 function startGame(){
-  // make sure sizes are accurate
   updateSizes();
 
   playerHP = playerMaxHP + (AUTOBOTS.find(b=>b.id===selectedAutobot)?.hpBonus || 0);
@@ -296,20 +287,18 @@ function startGame(){
   boss = null;
   bossHP = 150;
   bossActive = false;
+  enemySpeed = Math.max(4, Math.round(areaH * 0.006));
   spawnInterval = 1000;
   ammo = missileCapacity;
   gameRunning = true;
   paused = false;
   updateHUD();
 
-  // clean play area
   playArea.querySelectorAll(".enemy, .missile, .explosion, .boss, .boss-missile").forEach(n=>n.remove());
 
-  // spawn & ammo regen
   spawnIntervalId = setInterval(spawnEnemy, spawnInterval);
   ammoRegenTimer = setInterval(()=>{ if(!gameRunning||paused) return; if(ammo<missileCapacity){ ammo++; updateHUD(); } }, 700);
 
-  // keep sizes up to date on orientation change / resize
   window.addEventListener("resize", updateSizes);
 
   requestAnimationFrame(gameLoop);
@@ -348,7 +337,7 @@ function waitReturn(e){
   }
 }
 
-/***** RETURN HOME (clean) *****/
+/***** RETURN TO HOME (clean) *****/
 function returnToHome(){
   if (gameRunning && !confirm("Return to Home? Current run will end.")) return;
 
@@ -387,7 +376,7 @@ function updateHUD(){
   } else bossHPEl.classList.add("hidden");
 }
 
-/***** INPUTS - keyboard & mobile *****/
+/***** INPUTS (keyboard and mobile) *****/
 document.addEventListener("keydown", (ev) => {
   if (!gameRunning || paused) return;
   if (ev.code === "ArrowLeft") {
@@ -405,7 +394,7 @@ document.addEventListener("keydown", (ev) => {
   }
 });
 
-/***** MOBILE CONTROLS *****/
+/***** MOBILE / ON-SCREEN CONTROLS *****/
 function setupMobileControls(){
   if (!btnLeft || !btnRight || !btnShoot) return;
 
@@ -430,9 +419,10 @@ function setupMobileControls(){
   btnShoot.addEventListener("click", (ev) => { ev.preventDefault(); doShoot(); });
 }
 function doShoot(){ if (!gameRunning || paused) return; if (ammo > 0){ firePlayerMissile(); ammo--; updateHUD(); } }
+
 setupMobileControls();
 
-/***** SPAWN enemy (using computed areaW/areaH) *****/
+/***** SPAWN ENEMY *****/
 function spawnEnemy(){
   if (!gameRunning || paused || bossActive) return;
   updateSizes();
@@ -460,7 +450,7 @@ function firePlayerMissile(){
   missiles.push(m);
 }
 
-/***** BOSS spawn + movement + shoot *****/
+/***** BOSS: spawn, move, shoot *****/
 function spawnBoss(){
   updateSizes();
   bossActive = true;
@@ -521,12 +511,11 @@ function spawnBossMissile(){
   enemies.push(bm);
 }
 
-/***** GAME LOOP (dynamic collision / movement) *****/
+/***** GAME LOOP (movement & collisions) *****/
 function gameLoop(){
   if (!gameRunning) return;
   if (paused) { requestAnimationFrame(gameLoop); return; }
 
-  // mobile continuous movement
   if (movingLeft) {
     playerX = Math.max(0, playerX - Math.max(2, Math.round(areaW * 0.02)));
     playerEl.style.left = playerX + "px";
@@ -535,12 +524,10 @@ function gameLoop(){
     playerEl.style.left = playerX + "px";
   }
 
-  // move enemies & boss missiles
   for (let i = enemies.length -1; i >= 0; i--){
     const el = enemies[i];
     if (!el) { enemies.splice(i,1); continue; }
 
-    // boss missile
     if (el.dataset && el.dataset.bossMissile === "1") {
       const top = parseFloat(el.style.top || 0);
       el.style.top = (top + bossMissileSpeed) + "px";
@@ -557,7 +544,6 @@ function gameLoop(){
       continue;
     }
 
-    // normal enemy
     if (el.classList && el.classList.contains("enemy")) {
       const top = parseFloat(el.style.top || -enemyH);
       el.style.top = (top + enemySpeed) + "px";
@@ -592,7 +578,6 @@ function gameLoop(){
     }
   }
 
-  // move player missiles & detect hits
   for (let mi = missiles.length -1; mi >= 0; mi--){
     const m = missiles[mi];
     const top = parseFloat(m.style.top || 0);
@@ -600,7 +585,6 @@ function gameLoop(){
 
     if (parseFloat(m.style.top) < -50) { m.remove(); missiles.splice(mi,1); continue; }
 
-    // boss first
     if (bossActive && boss) {
       const bx = parseFloat(boss.style.left) || 0, by = parseFloat(boss.style.top) || 0;
       if (rectsOverlap(parseFloat(m.style.left), parseFloat(m.style.top), missileW, missileH, bx, by, bossW, bossH)) {
@@ -627,7 +611,6 @@ function gameLoop(){
       }
     }
 
-    // normal enemy collisions
     for (let ei = enemies.length -1; ei >= 0; ei--) {
       const en = enemies[ei];
       if (!en || !en.classList) continue;
@@ -669,7 +652,7 @@ function rectsOverlap(x1,y1,w1,h1,x2,y2,w2,h2){
   return !(x1 + w1 <= x2 || x2 + w2 <= x1 || y1 + h1 <= y2 || y2 + h2 <= y1);
 }
 
-/***** PAUSE/RESUME *****/
+/***** PAUSE / RESUME *****/
 pauseBtn.addEventListener("click", () => {
   if (!gameRunning) return;
   togglePause();
@@ -705,7 +688,7 @@ function togglePause(){
   }
 }
 
-/***** save on unload *****/
+/***** cleanup on unload *****/
 window.addEventListener("beforeunload", ()=> {
   save(STORAGE.credits, credits);
   save(STORAGE.maxHP, playerMaxHP);
